@@ -518,6 +518,12 @@
   }
   .type-tab.active{background:var(--surface-2);color:var(--gold)}
   .type-tab:hover:not(.active){color:var(--text)}
+  .scope-tab{
+    padding:.6rem .4rem;border-radius:6px;font-size:.82rem;font-weight:500;
+    text-align:center;color:var(--text-dim);transition:all .15s ease;
+  }
+  .scope-tab.active{background:var(--surface-2);color:var(--gold)}
+  .scope-tab:hover:not(.active){color:var(--text)}
 
   /* ÇEVİRİCİ */
   .converter{
@@ -587,6 +593,88 @@
     .container{padding:1.2rem .9rem 4rem}
     .topbar-inner{padding:.85rem 1rem}
   }
+
+  /* ---------- ALARM SİSTEMİ ---------- */
+  .alarm-btn{position:relative}
+  .alarm-badge{
+    position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;
+    border-radius:999px;background:var(--loss);color:#1a0e0e;
+    font-size:.62rem;font-weight:700;display:none;
+    align-items:center;justify-content:center;padding:0 3px;
+    font-family:var(--mono);
+  }
+  .alarm-badge.show{display:flex}
+
+  .alarm-banner{margin-bottom:1rem;display:flex;flex-direction:column;gap:.55rem}
+  .alarm-card{
+    background:linear-gradient(180deg, rgba(229,183,104,.09), rgba(229,183,104,.03));
+    border:1px solid rgba(229,183,104,.35);border-radius:var(--radius-sm);
+    padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.7rem;
+  }
+  .alarm-card.critical{
+    background:linear-gradient(180deg, rgba(217,119,117,.1), rgba(217,119,117,.03));
+    border-color:rgba(217,119,117,.45);
+  }
+  .alarm-card .ic{font-size:1.1rem;line-height:1.4;flex:0 0 auto}
+  .alarm-card .body{flex:1;min-width:0}
+  .alarm-card .msg{font-size:.88rem;color:var(--text);line-height:1.5}
+  .alarm-card .meta{font-size:.74rem;color:var(--text-mute);margin-top:.25rem;font-family:var(--mono)}
+  .alarm-card .actions{display:flex;gap:.5rem;margin-top:.55rem;flex-wrap:wrap}
+  .alarm-card .close-x{
+    flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+    color:var(--text-dim);display:inline-flex;align-items:center;justify-content:center;
+    transition:all .15s ease;
+  }
+  .alarm-card .close-x:hover{color:var(--loss);background:rgba(217,119,117,.1)}
+
+  .switch-row{
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;
+    padding:.85rem 0;border-bottom:1px solid var(--border-soft);
+  }
+  .switch-row:last-child{border-bottom:none}
+  .switch-row .txt .t{font-size:.92rem;color:var(--text);font-weight:500}
+  .switch-row .txt .d{font-size:.78rem;color:var(--text-mute);margin-top:.15rem;line-height:1.4}
+  .switch{
+    position:relative;width:42px;height:24px;flex:0 0 auto;border-radius:999px;
+    background:var(--bg-2);border:1px solid var(--border);cursor:pointer;transition:all .2s ease;
+  }
+  .switch::after{
+    content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+    background:var(--text-mute);transition:all .2s ease;
+  }
+  .switch.on{background:rgba(201,169,97,.25);border-color:var(--gold)}
+  .switch.on::after{transform:translateX(18px);background:var(--gold)}
+  .switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+
+  .threshold-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;margin:.3rem 0 .2rem}
+  @media(max-width:560px){ .threshold-grid{grid-template-columns:repeat(3,1fr)} }
+  .th-chip{
+    background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:.55rem .3rem;text-align:center;transition:all .15s ease;cursor:pointer;user-select:none;
+  }
+  .th-chip.active{border-color:var(--gold);background:rgba(201,169,97,.08)}
+  .th-chip .pct{font-family:var(--mono);font-weight:600;font-size:.95rem;color:var(--text)}
+  .th-chip.active .pct{color:var(--gold)}
+  .th-chip .lbl{font-size:.65rem;color:var(--text-mute);margin-top:.15rem;letter-spacing:.03em}
+
+  .chan-card{
+    background:var(--bg-2);border:1px solid var(--border-soft);border-radius:var(--radius-sm);
+    padding:.9rem 1rem;margin-top:.7rem;
+  }
+  .chan-card.disabled{opacity:.5;pointer-events:none}
+  .chan-fields{display:flex;flex-direction:column;gap:.7rem;margin-top:.8rem}
+  .section-lbl{
+    font-size:.72rem;color:var(--text-mute);letter-spacing:.12em;text-transform:uppercase;
+    margin:1.1rem 0 .3rem;
+  }
+  .section-lbl:first-child{margin-top:0}
+  .alarm-log{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem}
+  .alarm-log-item{
+    font-size:.8rem;color:var(--text-dim);padding:.5rem .6rem;
+    background:var(--bg-2);border-radius:6px;display:flex;justify-content:space-between;gap:.6rem;
+  }
+  .alarm-log-item .t{color:var(--text-mute);font-family:var(--mono);font-size:.72rem;flex:0 0 auto}
+  .alarm-log-empty{font-size:.82rem;color:var(--text-mute);padding:.4rem 0}
 </style>
 </head>
 <body>
@@ -629,6 +717,9 @@
           <span id="updateText">Yükleniyor…</span>
         </div>
         <button class="btn btn-ghost btn-sm" id="btnRefresh" title="Fiyatları yenile">↻</button>
+        <button class="btn btn-ghost btn-sm alarm-btn" id="btnAlarms" title="Alarm sistemi">
+          🔔<span class="alarm-badge" id="alarmBadge">0</span>
+        </button>
         <div class="user-chip">
           <span class="dot"></span>
           <span class="email" id="userEmail"></span>
@@ -639,6 +730,8 @@
   </header>
 
   <main class="container">
+    <div class="alarm-banner" id="alarmBanner"></div>
+
     <div class="summary">
       <div class="stat">
         <div class="accent-line"></div>
@@ -995,6 +1088,130 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" id="detailCloseBtn">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========== ALARM SİSTEMİ MODAL =========== -->
+<div class="modal-bg" id="modalAlarm">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <h2 class="serif">Alarm Sistemi</h2>
+      <button class="modal-close" id="alarmModalClose">×</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="switch-row">
+        <div class="txt">
+          <div class="t">Alarm sistemini etkinleştir</div>
+          <div class="d">Fonların (ve seçtiğin diğer varlıkların) alış fiyatına göre değer kaybını izler.</div>
+        </div>
+        <div class="switch" id="swAlarmEnabled"><input type="checkbox" /></div>
+      </div>
+
+      <div class="section-lbl">Düşüş eşikleri</div>
+      <div class="helper" style="margin-bottom:.2rem">Alış fiyatına göre şu yüzdelerden birine ulaşınca alarm çalışsın (tıklayarak aç/kapat):</div>
+      <div class="threshold-grid" id="thresholdGrid"></div>
+
+      <div class="section-lbl">Kritik satış uyarısı</div>
+      <div class="switch-row" style="padding-top:.3rem">
+        <div class="txt">
+          <div class="t">Bu eşikte "bozdurmayı düşün" uyarısı ekle</div>
+          <div class="d">Seçtiğin düşüş seviyesine ulaşıldığında alarm, fonu bozdurmayı değerlendirmen için ayrıca işaretlenir.</div>
+        </div>
+        <div class="switch" id="swCritical"><input type="checkbox" /></div>
+      </div>
+      <div class="field" id="criticalPctField" style="margin-top:.5rem">
+        <label>Kritik eşik (%)</label>
+        <select id="criticalPctSelect"></select>
+      </div>
+
+      <div class="section-lbl">Kapsam</div>
+      <div class="helper" style="margin-bottom:.3rem">Hangi varlık türleri izlensin?</div>
+      <div class="type-tabs" style="grid-template-columns:repeat(3,1fr)" id="scopeTabs">
+        <button type="button" class="scope-tab" data-scope="fund">Fonlar</button>
+        <button type="button" class="scope-tab" data-scope="fx">Döviz</button>
+        <button type="button" class="scope-tab" data-scope="gold">Altın</button>
+      </div>
+
+      <div class="section-lbl">Bildirim kanalları</div>
+
+      <div class="chan-card" id="chanBrowser">
+        <div class="switch-row" style="padding:0;border:none">
+          <div class="txt">
+            <div class="t">Tarayıcı bildirimi</div>
+            <div class="d">Bu sekme/tarayıcı açıkken anlık bildirim gösterir.</div>
+          </div>
+          <div class="switch" id="swBrowser"><input type="checkbox" /></div>
+        </div>
+        <div class="chan-fields">
+          <button class="btn btn-ghost btn-sm" id="btnNotifPermission" style="align-self:flex-start">Bildirim izni ver</button>
+          <div class="helper" id="notifPermStatus"></div>
+        </div>
+      </div>
+
+      <div class="chan-card" id="chanEmail">
+        <div class="switch-row" style="padding:0;border:none">
+          <div class="txt">
+            <div class="t">E-posta</div>
+            <div class="d">EmailJS (ücretsiz) üzerinden alarm mailleri gönderir.</div>
+          </div>
+          <div class="switch" id="swEmail"><input type="checkbox" /></div>
+        </div>
+        <div class="chan-fields">
+          <div class="field">
+            <label>Alıcı e-posta adresi</label>
+            <input id="emailTo" type="email" placeholder="ornek@mail.com" />
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>EmailJS Service ID</label>
+              <input id="emailServiceId" type="text" placeholder="service_xxxx" />
+            </div>
+            <div class="field">
+              <label>Template ID</label>
+              <input id="emailTemplateId" type="text" placeholder="template_xxxx" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Public Key</label>
+            <input id="emailPublicKey" type="text" placeholder="public key" />
+          </div>
+          <div class="helper">
+            emailjs.com adresinden ücretsiz hesap açıp bir servis + şablon oluşturman gerekir
+            (şablonda <span class="mono">{{subject}}</span> ve <span class="mono">{{message}}</span> alanlarını kullan).
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btnTestEmail" style="align-self:flex-start">Test e-postası gönder</button>
+        </div>
+      </div>
+
+      <div class="chan-card" id="chanWhatsapp">
+        <div class="switch-row" style="padding:0;border:none">
+          <div class="txt">
+            <div class="t">WhatsApp</div>
+            <div class="d">Alarm anında WhatsApp'ta hazır mesaj açar — göndermek için sadece dokunman yeterli.</div>
+          </div>
+          <div class="switch" id="swWhatsapp"><input type="checkbox" /></div>
+        </div>
+        <div class="chan-fields">
+          <div class="field">
+            <label>Telefon numarası (ülke koduyla)</label>
+            <input id="waPhone" type="text" placeholder="905xxxxxxxxx" />
+          </div>
+          <div class="helper">
+            Tarayıcıdan otomatik WhatsApp gönderimi mümkün değil (WhatsApp'ın izin vermediği bir şey) —
+            alarm geldiğinde altında çıkan "WhatsApp'ta Gönder" butonuna dokunman yeterli, mesaj hazır gelir.
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btnTestWhatsapp" style="align-self:flex-start">Test linki aç</button>
+        </div>
+      </div>
+
+      <div class="section-lbl">Son alarmlar</div>
+      <div class="alarm-log" id="alarmLog"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="alarmClearLog">Geçmişi Temizle</button>
+      <button class="btn btn-primary" id="alarmSave">Kaydet</button>
     </div>
   </div>
 </div>
@@ -1442,6 +1659,7 @@ async function refreshAllPrices(){
       setPulse(state.failureCount >= 3 ? "error" : "stale");
     }
     renderAll();
+    try { checkAlarms(); } catch(e){ console.error("Alarm kontrol hatası:", e); }
   } finally {
     state.refreshing = false;
   }
@@ -2350,10 +2568,355 @@ async function renderUniversalChart(h, days) {
   });
 }
 
+/* =========================================================
+   7) ALARM SİSTEMİ
+   ========================================================= */
+const ALARM_STORAGE_KEY = "portfoyAlarmSettings";
+const ALARM_DEFAULT_THRESHOLDS = [5, 10, 15, 20, 25];
+
+function defaultAlarmSettings(){
+  return {
+    enabled: false,
+    thresholds: ALARM_DEFAULT_THRESHOLDS.map(pct => ({ pct, active: true })),
+    criticalEnabled: true,
+    criticalPct: 20,
+    scope: { fund: true, fx: false, gold: false },
+    channels: {
+      browser: { enabled: false },
+      email:   { enabled: false, to: "", serviceId: "", templateId: "", publicKey: "" },
+      whatsapp:{ enabled: false, phone: "" }
+    },
+    fired: {},   // holdingId -> son tetiklenen eşik (%)
+    log: []      // { ts, holdingName, pct, threshold, critical, channels }
+  };
+}
+
+function loadAlarmSettings(){
+  try {
+    const raw = localStorage.getItem(ALARM_STORAGE_KEY);
+    if (!raw) return defaultAlarmSettings();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultAlarmSettings(), parsed, {
+      channels: Object.assign(defaultAlarmSettings().channels, parsed.channels || {}),
+      scope: Object.assign(defaultAlarmSettings().scope, parsed.scope || {}),
+      thresholds: Array.isArray(parsed.thresholds) && parsed.thresholds.length
+        ? parsed.thresholds : defaultAlarmSettings().thresholds
+    });
+  } catch(e){ return defaultAlarmSettings(); }
+}
+
+function saveAlarmSettings(){
+  try { localStorage.setItem(ALARM_STORAGE_KEY, JSON.stringify(state.alarm)); }
+  catch(e){ console.error("Alarm ayarları kaydedilemedi:", e); }
+}
+
+state.alarm = loadAlarmSettings();
+
+function renderThresholdGrid(){
+  const grid = $("thresholdGrid"); grid.innerHTML = "";
+  state.alarm.thresholds.forEach((t, i) => {
+    const chip = document.createElement("div");
+    chip.className = "th-chip" + (t.active ? " active" : "");
+    chip.innerHTML = `<div class="pct">-%${t.pct}</div><div class="lbl">${t.active ? "açık" : "kapalı"}</div>`;
+    chip.addEventListener("click", () => {
+      state.alarm.thresholds[i].active = !state.alarm.thresholds[i].active;
+      renderThresholdGrid(); renderCriticalPctSelect();
+    });
+    grid.appendChild(chip);
+  });
+}
+
+function renderCriticalPctSelect(){
+  const sel = $("criticalPctSelect");
+  const cur = state.alarm.criticalPct;
+  sel.innerHTML = state.alarm.thresholds
+    .filter(t => t.active)
+    .map(t => `<option value="${t.pct}"${t.pct === cur ? " selected" : ""}>-%${t.pct}</option>`)
+    .join("") || `<option value="${cur}">-%${cur}</option>`;
+}
+
+function setSwitch(id, on){
+  const el = $(id); el.classList.toggle("on", !!on);
+  const input = el.querySelector("input"); if (input) input.checked = !!on;
+}
+function isSwitchOn(id){ return $(id).classList.contains("on"); }
+function wireSwitch(id, onChange){
+  $(id).addEventListener("click", (e) => {
+    e.preventDefault();
+    const on = !isSwitchOn(id);
+    setSwitch(id, on);
+    if (onChange) onChange(on);
+  });
+}
+
+function updateNotifPermStatus(){
+  const el = $("notifPermStatus");
+  if (!("Notification" in window)) { el.textContent = "Bu tarayıcı bildirim desteklemiyor."; return; }
+  const map = { granted: "İzin verildi ✓", denied: "İzin reddedildi — tarayıcı ayarlarından açman gerekir.", default: "Henüz izin istenmedi." };
+  el.textContent = map[Notification.permission] || "";
+}
+
+function renderAlarmModalFromState(){
+  const a = state.alarm;
+  setSwitch("swAlarmEnabled", a.enabled);
+  setSwitch("swCritical", a.criticalEnabled);
+  setSwitch("swBrowser", a.channels.browser.enabled);
+  setSwitch("swEmail", a.channels.email.enabled);
+  setSwitch("swWhatsapp", a.channels.whatsapp.enabled);
+
+  renderThresholdGrid();
+  renderCriticalPctSelect();
+  $("criticalPctField").style.display = a.criticalEnabled ? "flex" : "none";
+
+  document.querySelectorAll("#scopeTabs .scope-tab").forEach(b => {
+    b.classList.toggle("active", !!a.scope[b.dataset.scope]);
+  });
+
+  $("emailTo").value = a.channels.email.to || "";
+  $("emailServiceId").value = a.channels.email.serviceId || "";
+  $("emailTemplateId").value = a.channels.email.templateId || "";
+  $("emailPublicKey").value = a.channels.email.publicKey || "";
+  $("waPhone").value = a.channels.whatsapp.phone || "";
+
+  $("chanEmail").classList.toggle("disabled", false);
+  updateNotifPermStatus();
+  renderAlarmLogList();
+  updateAlarmBadge();
+}
+
+function renderAlarmLogList(){
+  const box = $("alarmLog");
+  const log = state.alarm.log.slice().reverse();
+  if (!log.length){ box.innerHTML = `<div class="alarm-log-empty">Henüz alarm tetiklenmedi.</div>`; return; }
+  box.innerHTML = log.slice(0, 30).map(it => {
+    const time = new Date(it.ts).toLocaleString("tr-TR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+    const tag = it.critical ? " 🔴" : "";
+    return `<div class="alarm-log-item"><span>${it.holdingName} — -%${it.pct.toFixed(1)} (eşik %${it.threshold})${tag}</span><span class="t">${time}</span></div>`;
+  }).join("");
+}
+
+function updateAlarmBadge(){
+  const badge = $("alarmBadge");
+  const count = state.alarm.activeAlerts ? state.alarm.activeAlerts.length : 0;
+  badge.textContent = count > 9 ? "9+" : String(count);
+  badge.classList.toggle("show", count > 0);
+}
+
+function openAlarmModal(){ renderAlarmModalFromState(); $("modalAlarm").classList.add("show"); }
+function closeAlarmModal(){ $("modalAlarm").classList.remove("show"); }
+
+$("btnAlarms").addEventListener("click", openAlarmModal);
+$("alarmModalClose").addEventListener("click", closeAlarmModal);
+
+document.querySelectorAll("#scopeTabs .scope-tab").forEach(b => {
+  b.addEventListener("click", () => {
+    state.alarm.scope[b.dataset.scope] = !state.alarm.scope[b.dataset.scope];
+    b.classList.toggle("active", state.alarm.scope[b.dataset.scope]);
+  });
+});
+
+wireSwitch("swAlarmEnabled");
+wireSwitch("swCritical", (on) => { $("criticalPctField").style.display = on ? "flex" : "none"; });
+wireSwitch("swBrowser", async (on) => {
+  if (on && "Notification" in window && Notification.permission === "default"){
+    await Notification.requestPermission(); updateNotifPermStatus();
+  }
+});
+wireSwitch("swEmail");
+wireSwitch("swWhatsapp");
+
+$("btnNotifPermission").addEventListener("click", async () => {
+  if (!("Notification" in window)) { toast("Bu tarayıcı bildirim desteklemiyor.", "error"); return; }
+  const perm = await Notification.requestPermission();
+  updateNotifPermStatus();
+  if (perm === "granted") toast("Bildirim izni verildi ✓", "success");
+});
+
+$("alarmClearLog").addEventListener("click", () => {
+  state.alarm.log = []; state.alarm.activeAlerts = [];
+  saveAlarmSettings(); renderAlarmLogList(); renderAlarmBanner(); updateAlarmBadge();
+  toast("Alarm geçmişi temizlendi");
+});
+
+$("alarmSave").addEventListener("click", () => {
+  const a = state.alarm;
+  a.enabled = isSwitchOn("swAlarmEnabled");
+  a.criticalEnabled = isSwitchOn("swCritical");
+  a.criticalPct = parseFloat($("criticalPctSelect").value) || a.criticalPct;
+  a.channels.browser.enabled = isSwitchOn("swBrowser");
+  a.channels.email.enabled = isSwitchOn("swEmail");
+  a.channels.email.to = $("emailTo").value.trim();
+  a.channels.email.serviceId = $("emailServiceId").value.trim();
+  a.channels.email.templateId = $("emailTemplateId").value.trim();
+  a.channels.email.publicKey = $("emailPublicKey").value.trim();
+  a.channels.whatsapp.enabled = isSwitchOn("swWhatsapp");
+  a.channels.whatsapp.phone = $("waPhone").value.trim().replace(/[^\d]/g, "");
+
+  if (a.channels.email.enabled && (!a.channels.email.to || !a.channels.email.serviceId || !a.channels.email.templateId || !a.channels.email.publicKey)){
+    toast("E-posta için tüm alanları doldurmalısın", "error"); return;
+  }
+  if (a.channels.whatsapp.enabled && !a.channels.whatsapp.phone){
+    toast("WhatsApp için telefon numarası gerekli", "error"); return;
+  }
+
+  saveAlarmSettings();
+  closeAlarmModal();
+  toast("Alarm ayarları kaydedildi", "success");
+  checkAlarms();
+});
+
+/* --- EmailJS'i sadece gerektiğinde yükle --- */
+let _emailjsLoading = null;
+function ensureEmailJS(){
+  if (window.emailjs) return Promise.resolve(true);
+  if (_emailjsLoading) return _emailjsLoading;
+  _emailjsLoading = new Promise((resolve) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+  return _emailjsLoading;
+}
+
+async function sendEmailAlert(subject, message){
+  const cfg = state.alarm.channels.email;
+  if (!cfg.enabled) return;
+  const ok = await ensureEmailJS();
+  if (!ok || !window.emailjs) { toast("EmailJS yüklenemedi", "error"); return; }
+  try {
+    emailjs.init({ publicKey: cfg.publicKey });
+    await emailjs.send(cfg.serviceId, cfg.templateId, { to_email: cfg.to, subject, message });
+  } catch(e){
+    console.error("E-posta gönderilemedi:", e);
+    toast("E-posta gönderilemedi — EmailJS ayarlarını kontrol et", "error");
+  }
+}
+
+$("btnTestEmail").addEventListener("click", async () => {
+  const to = $("emailTo").value.trim(), sid = $("emailServiceId").value.trim(),
+        tid = $("emailTemplateId").value.trim(), pk = $("emailPublicKey").value.trim();
+  if (!to || !sid || !tid || !pk){ toast("Önce tüm e-posta alanlarını doldur", "error"); return; }
+  state.alarm.channels.email = Object.assign(state.alarm.channels.email, { to, serviceId: sid, templateId: tid, publicKey: pk, enabled: true });
+  await sendEmailAlert("Portföy Alarm — Test", "Bu bir test mesajıdır. Alarm sistemi e-posta bağlantın çalışıyor.");
+  toast("Test e-postası gönderildi (gelen kutunu kontrol et)", "success");
+});
+
+function whatsappLink(phone, message){
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+$("btnTestWhatsapp").addEventListener("click", () => {
+  const phone = $("waPhone").value.trim().replace(/[^\d]/g, "");
+  if (!phone){ toast("Önce telefon numarasını gir", "error"); return; }
+  window.open(whatsappLink(phone, "Portföy Alarm — test mesajı. WhatsApp bağlantın çalışıyor ✓"), "_blank");
+});
+
+function sendBrowserNotification(title, body){
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try { new Notification(title, { body, icon: undefined }); } catch(e){ console.error(e); }
+}
+
+function alarmScopeTypes(){
+  return Object.entries(state.alarm.scope).filter(([,v]) => v).map(([k]) => k);
+}
+
+function buildAlarmMessage(h, dropPct, threshold, critical){
+  const name = h.label || h.code;
+  let msg = `⚠️ ${name} alış fiyatına göre %${dropPct.toFixed(1)} düştü (eşik: -%${threshold}).`;
+  if (critical) msg += ` Bu seviye kritik eşiğin üzerinde — fonu bozdurmayı değerlendirebilirsin.`;
+  return msg;
+}
+
+function renderAlarmBanner(){
+  const box = $("alarmBanner");
+  const alerts = state.alarm.activeAlerts || [];
+  if (!alerts.length){ box.innerHTML = ""; return; }
+  box.innerHTML = alerts.map((al, i) => `
+    <div class="alarm-card${al.critical ? " critical" : ""}">
+      <div class="ic">${al.critical ? "🔴" : "⚠️"}</div>
+      <div class="body">
+        <div class="msg">${al.message}</div>
+        <div class="meta">${new Date(al.ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</div>
+        ${al.waPhone ? `<div class="actions"><button class="btn btn-ghost btn-sm" data-wa="${i}">WhatsApp'ta Gönder</button></div>` : ""}
+      </div>
+      <button class="close-x" data-dismiss="${i}">×</button>
+    </div>
+  `).join("");
+
+  box.querySelectorAll("[data-dismiss]").forEach(b => b.addEventListener("click", () => {
+    const idx = parseInt(b.dataset.dismiss);
+    state.alarm.activeAlerts.splice(idx, 1);
+    saveAlarmSettings(); renderAlarmBanner(); updateAlarmBadge();
+  }));
+  box.querySelectorAll("[data-wa]").forEach(b => b.addEventListener("click", () => {
+    const idx = parseInt(b.dataset.wa);
+    const al = alerts[idx]; if (!al) return;
+    window.open(whatsappLink(al.waPhone, al.message), "_blank");
+  }));
+  updateAlarmBadge();
+}
+
+function fireAlarm(h, dropPct, threshold, critical){
+  const a = state.alarm;
+  const message = buildAlarmMessage(h, dropPct, threshold, critical);
+
+  a.log.push({ ts: Date.now(), holdingName: h.label || h.code, pct: dropPct, threshold, critical });
+  if (a.log.length > 100) a.log = a.log.slice(-100);
+
+  a.activeAlerts = a.activeAlerts || [];
+  a.activeAlerts.push({
+    ts: Date.now(), message, critical,
+    waPhone: a.channels.whatsapp.enabled ? a.channels.whatsapp.phone : null
+  });
+
+  saveAlarmSettings();
+  renderAlarmBanner();
+  toast(message, critical ? "error" : "");
+
+  if (a.channels.browser.enabled) sendBrowserNotification(critical ? "Kritik Alarm — Portföy" : "Alarm — Portföy", message);
+  if (a.channels.email.enabled) sendEmailAlert(critical ? "Kritik Alarm — Portföy" : "Alarm — Portföy", message);
+  // WhatsApp otomatik gönderilemiyor; kullanıcı banner üzerindeki butona dokunarak gönderir.
+}
+
+function checkAlarms(){
+  const a = state.alarm;
+  if (!a.enabled) return;
+  const scopeTypes = alarmScopeTypes();
+  if (!scopeTypes.length) return;
+
+  const activeThresholds = a.thresholds.filter(t => t.active).map(t => t.pct).sort((x,y) => x - y);
+  if (!activeThresholds.length) return;
+
+  state.holdings.filter(h => scopeTypes.includes(h.type)).forEach(h => {
+    const cur = getCurrentPrice(h), buy = getTLBuyPrice(h);
+    if (!isFinite(cur) || !isFinite(buy) || buy <= 0) return;
+    const pct = ((cur - buy) / buy) * 100;
+    const dropPct = pct < 0 ? -pct : 0;
+
+    const lastFired = a.fired[h.id] || 0;
+    const minThreshold = activeThresholds[0];
+
+    // Toparlanma: en düşük eşiğin altına inince tekrar tetiklenebilsin
+    if (dropPct < minThreshold - 2) { a.fired[h.id] = 0; return; }
+
+    // Aşılan en yüksek eşiği bul
+    let crossed = 0;
+    for (const t of activeThresholds) if (dropPct >= t) crossed = t;
+    if (crossed > 0 && crossed > lastFired){
+      a.fired[h.id] = crossed;
+      const critical = a.criticalEnabled && crossed >= a.criticalPct;
+      fireAlarm(h, dropPct, crossed, critical);
+    }
+  });
+}
+
 function onUserReady(){
   $("userEmail").textContent = state.userKod;
   $("auth").style.display = "none"; $("app").classList.add("show");
   subscribeHoldings(state.userKod); refreshAllPrices();
+  renderAlarmBanner(); updateAlarmBadge();
   setInterval(() => { if (!document.hidden) refreshAllPrices(); }, 60000);
 }
 
