@@ -342,9 +342,20 @@
   .grid-main{
     display:grid;gap:1.5rem;
     grid-template-columns:1fr;
+    align-items:start;
   }
-  @media(min-width:1100px){
+  @media(min-width:880px){
     .grid-main{grid-template-columns:1fr 360px}
+  }
+  /* Varlıklar tablosu kendi içinde kaysın, sayfa boyu sabit kalsın */
+  @media(min-width:880px){
+    .grid-main .panel:first-child .table-wrap{
+      max-height:calc(100vh - 260px);
+      overflow-y:auto;
+    }
+    .grid-main .panel:first-child .table-wrap thead th{
+      position:sticky;top:0;z-index:5;
+    }
   }
 
   /* tablo paneli */
@@ -412,18 +423,38 @@
   .empty h3{font-family:var(--serif);font-weight:500;color:var(--text);margin:0 0 .5rem}
   .empty p{margin:0 0 1.2rem;font-size:.92rem}
 
-  /* dağılım paneli */
-  .alloc{padding:1.3rem}
+  /* dağılım paneli — mobilde: yatay şerit (kaydırılabilir çipler), genişte: yan yana */
+  .alloc{padding:1.1rem 1.3rem}
+  .alloc-body{ display:flex; flex-direction:column; gap:.9rem; }
   .alloc canvas{max-width:100%}
-  .alloc-list{margin-top:1rem;display:flex;flex-direction:column;gap:.55rem}
-  .alloc-row{
-    display:flex;align-items:center;justify-content:space-between;gap:.8rem;
-    font-size:.86rem;
+  .alloc-chart-box{ position:relative; height:150px; flex-shrink:0; }
+  .alloc-list{
+    display:flex; gap:.6rem; overflow-x:auto; padding-bottom:.2rem;
+    scrollbar-width:thin;
   }
-  .alloc-row .left{display:flex;align-items:center;gap:.55rem;min-width:0}
-  .alloc-row .swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0}
-  .alloc-row .name{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .alloc-row{
+    display:flex;align-items:center;gap:.5rem;
+    font-size:.82rem; flex:0 0 auto; white-space:nowrap;
+    background:var(--bg-2); border:1px solid var(--border-soft);
+    border-radius:999px; padding:.35rem .7rem;
+  }
+  .alloc-row .left{display:flex;align-items:center;gap:.45rem;min-width:0}
+  .alloc-row .swatch{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+  .alloc-row .name{color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:110px}
   .alloc-row .pct{font-family:var(--mono);color:var(--text-dim)}
+  @media(min-width:880px){
+    .alloc-body{ flex-direction:row; align-items:flex-start; }
+    .alloc-chart-box{ width:150px; height:150px; }
+    .alloc-list{
+      flex-direction:column; overflow-x:visible; overflow-y:auto;
+      max-height:220px; flex:1;
+    }
+    .alloc-row{
+      justify-content:space-between; border-radius:var(--radius-sm);
+      background:transparent; border:none; padding:.15rem 0;
+    }
+    .alloc-row .name{max-width:none}
+  }
 
   /* canlı fiyatlar paneli */
   .live-prices{padding:1.3rem;display:flex;flex-direction:column;gap:1.3rem}
@@ -799,10 +830,12 @@
         <div class="panel-head" style="padding:0 0 1rem 0;border-bottom:1px solid var(--border-soft);margin-bottom:1rem">
           <h2 class="serif" style="font-size:1.1rem">Dağılım</h2>
         </div>
-        <div style="position:relative;height:200px">
-          <canvas id="allocChart"></canvas>
+        <div class="alloc-body">
+          <div class="alloc-chart-box">
+            <canvas id="allocChart"></canvas>
+          </div>
+          <div class="alloc-list" id="allocList"></div>
         </div>
-        <div class="alloc-list" id="allocList"></div>
       </div>
     </div>
 
@@ -1065,19 +1098,40 @@
 
       <!-- Grafik Alanı (Fon, Altın ve Döviz için Ortak) -->
       <div id="detailChartWrap" style="display:none">
-        <div class="period-tabs" id="periodTabs">
-          <button class="period-tab" data-days="30">1 Ay</button>
-          <button class="period-tab active" data-days="90">3 Ay</button>
-          <button class="period-tab" data-days="180">6 Ay</button>
-          <button class="period-tab" data-days="270">9 Ay</button>
-          <button class="period-tab" data-days="365">1 Yıl</button>
+
+        <!-- Görünüm seçici: Fiyat grafiği / Yıllık getiri -->
+        <div class="period-tabs" id="detailViewTabs" style="margin-bottom:1rem">
+          <button class="period-tab active" data-view="price">Fiyat Grafiği</button>
+          <button class="period-tab" data-view="yearly">Yıllık Getiri</button>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:.6rem;flex-wrap:wrap">
-          <div id="detailRangeLabel" style="font-size:.78rem;color:var(--text-mute);letter-spacing:.1em;text-transform:uppercase">Son 90 günün fiyat seyri</div>
-          <div id="detailRangeStats" style="font-family:var(--mono);font-size:.78rem;color:var(--text-dim)"></div>
+
+        <div id="priceView">
+          <div class="period-tabs" id="periodTabs">
+            <button class="period-tab" data-days="30">1 Ay</button>
+            <button class="period-tab active" data-days="90">3 Ay</button>
+            <button class="period-tab" data-days="180">6 Ay</button>
+            <button class="period-tab" data-days="365">12 Ay</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:.6rem;flex-wrap:wrap">
+            <div id="detailRangeLabel" style="font-size:.78rem;color:var(--text-mute);letter-spacing:.1em;text-transform:uppercase">Son 90 günün fiyat seyri</div>
+            <div id="detailRangeStats" style="font-family:var(--mono);font-size:.78rem;color:var(--text-dim)"></div>
+          </div>
+          <div style="position:relative;height:280px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:.7rem">
+            <canvas id="detailChart"></canvas>
+          </div>
         </div>
-        <div style="position:relative;height:280px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:.7rem">
-          <canvas id="detailChart"></canvas>
+
+        <div id="yearlyView" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:.6rem;flex-wrap:wrap">
+            <div style="font-size:.78rem;color:var(--text-mute);letter-spacing:.1em;text-transform:uppercase">Takvim yılına göre getiri</div>
+            <div id="yearlyRangeStats" style="font-family:var(--mono);font-size:.78rem;color:var(--text-dim)"></div>
+          </div>
+          <div style="position:relative;height:280px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:.7rem">
+            <canvas id="yearlyChart"></canvas>
+          </div>
+          <div id="yearlyNoData" style="display:none;padding:1rem;color:var(--text-mute);font-size:.85rem">
+            Bu varlık için yeterli çok yıllı veri bulunamadı.
+          </div>
         </div>
       </div>
       
@@ -1341,8 +1395,9 @@ const state = {
   user: null, userKod: null, holdings: [],
   prices: { gold: {}, fx: {}, fund: {} },
   history: { fund: {}, fx: {}, gold: {} }, // Geçmiş verileri tutacak yeni obje
+  longHistory: { fund: {}, fx: {}, gold: {} }, // Yıllık getiri grafiği için çok yıllı geçmiş önbelleği
   selectedType: "gold", unsubHoldings: null, allocChart: null,
-  detailChart: null, currentDetailHolding: null, currentDetailDays: 90, refreshInterval: null,
+  detailChart: null, yearlyChart: null, currentDetailHolding: null, currentDetailDays: 90, currentDetailView: "price", refreshInterval: null,
   catFilters: { fund: { from: "", to: "" }, gold: { from: "", to: "" }, fx: { from: "", to: "" }, eurobond: { from: "", to: "" }, deposit: { from: "", to: "" } },
   catCharts: {}
 };
@@ -1470,10 +1525,10 @@ async function fetchTefasFund(code, days = 365){
 }
 
 // Yahoo Finance API üzerinden Altın ve Döviz geçmiş verilerini çekme (Son 1 Yıl Sabit)
-async function fetchYahooHistory(symbolStr, type) {
+async function fetchYahooHistory(symbolStr, type, years = 1) {
     if(!symbolStr) return null;
     const end = Math.floor(Date.now() / 1000);
-    const start = end - (365 * 24 * 60 * 60); // 1 Yıl
+    const start = end - (Math.round(years * 365) * 24 * 60 * 60); // varsayılan 1 Yıl
     const rawUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolStr}?period1=${start}&period2=${end}&interval=1d`;
     
     // Yahoo CORS ister, proxy kullanıyoruz
@@ -1510,14 +1565,14 @@ async function fetchYahooHistory(symbolStr, type) {
 }
 
 // Altın verilerini TL/Gram cinsine çeviren yardımcı fonksiyon
-async function fetchGoldHistoryInTL(goldKey) {
+async function fetchGoldHistoryInTL(goldKey, years = 1) {
      const symbol = YAHOO_SYMBOLS[goldKey];
      if(!symbol) return null;
 
      // 1. İlgili madenin USD/Ons fiyatını çek
-     const metalHistoryRaw = await fetchYahooHistory(symbol, 'gold');
+     const metalHistoryRaw = await fetchYahooHistory(symbol, 'gold', years);
      // 2. USD/TRY geçmişini çek
-     const usdHistory = await fetchYahooHistory(YAHOO_SYMBOLS["USD"], 'fx');
+     const usdHistory = await fetchYahooHistory(YAHOO_SYMBOLS["USD"], 'fx', years);
 
      if(!metalHistoryRaw || !usdHistory) return null;
 
@@ -1957,6 +2012,16 @@ function renderCategoryCards() {
         </div>
       </div>
       <div class="cat-card-body ${isOpen ? 'open' : ''}">
+        <!-- Hızlı dönem seçimi -->
+        <div class="cat-filter-row" style="border-bottom:none;margin-bottom:.5rem;padding-bottom:0">
+          <span class="cat-filter-label">Hızlı dönem</span>
+          <div class="period-tabs" style="margin-bottom:0">
+            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="1">1 Ay</button>
+            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="3">3 Ay</button>
+            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="6">6 Ay</button>
+            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="12">12 Ay</button>
+          </div>
+        </div>
         <!-- Tarih filtresi -->
         <div class="cat-filter-row">
           <span class="cat-filter-label">Tarih aralığı</span>
@@ -2036,6 +2101,24 @@ function renderCategoryCards() {
       e.stopPropagation();
       state.catFilters[cfg.key] = { from: "", to: "" };
       renderCategoryCards();
+    });
+
+    // Hızlı dönem butonları (1/3/6/12 Ay)
+    card.querySelectorAll(".cat-quick-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const months = parseInt(btn.dataset.months);
+        const to = new Date();
+        const from = new Date();
+        from.setMonth(from.getMonth() - months);
+        const toStr = to.toISOString().slice(0,10);
+        const fromStr = from.toISOString().slice(0,10);
+        state.catFilters[cfg.key] = { from: fromStr, to: toStr };
+        renderCategoryCards();
+        const openCard = container.querySelector(`[data-cat-key="${cfg.key}"] .cat-card-body`);
+        if (openCard) { openCard.classList.add("open"); openCard.previousElementSibling?.querySelector(".cat-toggle-btn")?.classList.add("open"); }
+        drawCatChart(cfg.key);
+      });
     });
 
     // Açıksa grafiği çiz
@@ -2396,6 +2479,113 @@ document.querySelectorAll("#periodTabs .period-tab").forEach(tab => {
   });
 });
 
+// Görünüm Tab'ları (Fiyat Grafiği / Yıllık Getiri)
+document.querySelectorAll("#detailViewTabs .period-tab").forEach(tab => {
+  tab.addEventListener("click", async () => {
+    if (!state.currentDetailHolding) return;
+    const view = tab.dataset.view;
+    if (view === state.currentDetailView) return;
+    state.currentDetailView = view;
+    document.querySelectorAll("#detailViewTabs .period-tab").forEach(t => t.classList.toggle("active", t === tab));
+    $("priceView").style.display = view === "price" ? "block" : "none";
+    $("yearlyView").style.display = view === "yearly" ? "block" : "none";
+    if (view === "yearly") await renderYearlyReturns(state.currentDetailHolding);
+  });
+});
+
+// Yıllık getiri için çok yıllı geçmiş veri çek (6 yıla kadar)
+async function fetchLongHistory(h){
+  const YEARS = 6;
+  if (h.type === "fund"){
+    if (state.longHistory.fund[h.code]) return state.longHistory.fund[h.code];
+    const entry = await fetchTefasFund(h.code, Math.round(365.25 * YEARS));
+    const hist = entry ? entry.history : null;
+    state.longHistory.fund[h.code] = hist;
+    return hist;
+  }
+  if (h.type === "fx"){
+    if (state.longHistory.fx[h.code]) return state.longHistory.fx[h.code];
+    const sym = YAHOO_SYMBOLS[h.code];
+    const hist = await fetchYahooHistory(sym, "fx", YEARS);
+    state.longHistory.fx[h.code] = hist;
+    return hist;
+  }
+  if (h.type === "gold"){
+    if (state.longHistory.gold[h.code]) return state.longHistory.gold[h.code];
+    const hist = await fetchGoldHistoryInTL(h.code, YEARS);
+    state.longHistory.gold[h.code] = hist;
+    return hist;
+  }
+  return null;
+}
+
+// Geçmiş fiyat dizisinden takvim yılı bazlı getiri (%) hesapla
+function computeYearlyReturns(history){
+  if (!Array.isArray(history) || history.length < 2) return [];
+  const sorted = [...history].sort((a,b) => a.date - b.date);
+  const byYear = {};
+  sorted.forEach(p => {
+    const y = p.date.getFullYear();
+    if (!byYear[y]) byYear[y] = [];
+    byYear[y].push(p);
+  });
+  const years = Object.keys(byYear).map(Number).sort((a,b) => a-b);
+  const results = [];
+  years.forEach((y, idx) => {
+    const pointsInYear = byYear[y];
+    const last = pointsInYear[pointsInYear.length - 1];
+    // Yıl başı fiyatı: bir önceki yılın son verisi varsa onu, yoksa bu yılın ilk verisini kullan
+    const prevYearPoints = idx > 0 ? byYear[years[idx-1]] : null;
+    const first = prevYearPoints ? prevYearPoints[prevYearPoints.length - 1] : pointsInYear[0];
+    if (!first || !last || first.price <= 0) return;
+    const pct = ((last.price - first.price) / first.price) * 100;
+    const partial = !prevYearPoints; // İlk yıl muhtemelen eksik veriyle başlıyor
+    results.push({ year: y, pct, partial });
+  });
+  return results;
+}
+
+async function renderYearlyReturns(h){
+  $("yearlyRangeStats").textContent = "Veri yükleniyor…";
+  $("yearlyNoData").style.display = "none";
+
+  const history = await fetchLongHistory(h);
+  const yearly = computeYearlyReturns(history);
+
+  if (!yearly.length){
+    $("yearlyRangeStats").textContent = "";
+    $("yearlyNoData").style.display = "block";
+    if (state.yearlyChart){ state.yearlyChart.destroy(); state.yearlyChart = null; }
+    return;
+  }
+
+  $("yearlyRangeStats").textContent = yearly.some(y => y.partial) ? "İlk yıl kısmi veri içerebilir" : "";
+
+  const labels = yearly.map(y => String(y.year) + (y.partial ? " (kısmi)" : ""));
+  const data = yearly.map(y => y.pct);
+  const colors = data.map(v => v >= 0 ? "rgba(127,182,133,.75)" : "rgba(217,119,117,.75)");
+  const borders = data.map(v => v >= 0 ? "#7fb685" : "#d97775");
+
+  if (state.yearlyChart) state.yearlyChart.destroy();
+  const ctx = $("yearlyChart").getContext("2d");
+  state.yearlyChart = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ label: "Yıllık Getiri (%)", data, backgroundColor: colors, borderColor: borders, borderWidth: 1.5, borderRadius: 5 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: "#131a2b", borderColor: "#1f2a44", borderWidth: 1,
+          callbacks: { label: c => fmtPct(c.parsed.y) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#8a92a6", font: { size: 11 } } },
+        y: { grid: { color: "rgba(31,42,68,.5)" }, ticks: { color: "#8a92a6", font: { size: 10 }, callback: v => v + "%" } }
+      }
+    }
+  });
+}
+
 async function openDetail(holdingId){
   const h = state.holdings.find(x => x.id === holdingId); if (!h) return;
   const cur = getCurrentPrice(h), cost = getTLBuyPrice(h) * h.amount, value = cur * h.amount;
@@ -2419,7 +2609,13 @@ async function openDetail(holdingId){
     state.currentDetailHolding = h;
     state.currentDetailDays = 90; // Default
     document.querySelectorAll("#periodTabs .period-tab").forEach(t => t.classList.toggle("active", parseInt(t.dataset.days) === 90));
-    
+
+    // Görünümü "Fiyat Grafiği"ne sıfırla
+    state.currentDetailView = "price";
+    document.querySelectorAll("#detailViewTabs .period-tab").forEach(t => t.classList.toggle("active", t.dataset.view === "price"));
+    $("priceView").style.display = "block";
+    $("yearlyView").style.display = "none";
+
     $("detailRangeLabel").textContent = "Veri yükleniyor...";
     $("detailRangeStats").textContent = "";
     
