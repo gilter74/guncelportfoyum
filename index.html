@@ -347,14 +347,18 @@
   @media(min-width:880px){
     .grid-main{grid-template-columns:1fr 360px}
   }
-  /* Varlıklar tablosu kendi içinde kaysın, sayfa boyu sabit kalsın */
+  /* Varlıklar tablosu kendi içinde kaysın, sayfa boyu sabit kalsın (mobil dahil) */
+  .grid-main .panel:first-child .table-wrap{
+    max-height:calc(100vh - 340px);
+    overflow-y:auto;
+  }
+  .grid-main .panel:first-child .table-wrap thead th{
+    position:sticky;top:0;z-index:5;
+    background:var(--bg-2);
+  }
   @media(min-width:880px){
     .grid-main .panel:first-child .table-wrap{
       max-height:calc(100vh - 260px);
-      overflow-y:auto;
-    }
-    .grid-main .panel:first-child .table-wrap thead th{
-      position:sticky;top:0;z-index:5;
     }
   }
 
@@ -1399,6 +1403,7 @@ const state = {
   selectedType: "gold", unsubHoldings: null, allocChart: null,
   detailChart: null, yearlyChart: null, currentDetailHolding: null, currentDetailDays: 90, currentDetailView: "price", refreshInterval: null,
   catFilters: { fund: { from: "", to: "" }, gold: { from: "", to: "" }, fx: { from: "", to: "" }, eurobond: { from: "", to: "" }, deposit: { from: "", to: "" } },
+  catQuickPeriod: { fund: null, gold: null, fx: null, eurobond: null, deposit: null },
   catCharts: {}
 };
 
@@ -1943,11 +1948,11 @@ function getEarliestDate(holdings) {
 
 function renderCategoryCards() {
   const CAT_CONFIG = [
-    { key:"fund",     label:"Yatırım Fonları", icon:"F",  iconClass:"fund"     },
-    { key:"gold",     label:"Altın",           icon:"Au", iconClass:"gold"      },
-    { key:"fx",       label:"Döviz",           icon:"$",  iconClass:"fx"        },
-    { key:"eurobond", label:"Eurobond",         icon:"EB", iconClass:"eurobond"  },
-    { key:"deposit",  label:"Mevduat",          icon:"₺",  iconClass:"deposit"   },
+    { key:"fund",     label:"Yatırım Fonları", icon:"F",  iconClass:"fund",     historySupported:true  },
+    { key:"gold",     label:"Altın",           icon:"Au", iconClass:"gold",     historySupported:true  },
+    { key:"fx",       label:"Döviz",           icon:"$",  iconClass:"fx",       historySupported:true  },
+    { key:"eurobond", label:"Eurobond",         icon:"EB", iconClass:"eurobond", historySupported:false },
+    { key:"deposit",  label:"Mevduat",          icon:"₺",  iconClass:"deposit",  historySupported:false },
   ];
 
   const container = $("catSection");
@@ -1966,14 +1971,15 @@ function renderCategoryCards() {
     const holdings = state.holdings.filter(h => h.type === cfg.key);
     if (!holdings.length) return;
 
-    const allStats = getCatStats(holdings);
-    const filter   = state.catFilters[cfg.key] || { from: "", to: "" };
+    const allStats    = getCatStats(holdings);
+    const filter      = state.catFilters[cfg.key] || { from: "", to: "" };
+    const quickMonths = cfg.historySupported ? (state.catQuickPeriod[cfg.key] || null) : null;
 
-    // Tarih aralığı filtrelenmiş holdings
+    // Tarih aralığı filtrelenmiş holdings (yalnızca hızlı dönem KAPALIYKEN kullanılır)
     const filtHoldings = filterHoldingsByDate(holdings, filter.from, filter.to);
     const filtStats    = getCatStats(filtHoldings);
 
-    const isFiltered = filter.from || filter.to;
+    const isFiltered = !quickMonths && (filter.from || filter.to);
     const earliest   = getEarliestDate(holdings);
     const today      = new Date().toISOString().slice(0, 10);
     const isOpen     = openState[cfg.key] ?? false;
@@ -1982,9 +1988,28 @@ function renderCategoryCards() {
     const plDir   = allStats.pl >= 0 ? "up" : "down";
     const plSign  = allStats.pl >= 0 ? "+" : "";
 
+    // Dönem istatistik etiket/değerleri: hızlı dönem aktifse veri gelene kadar "…" gösterilir
+    const psCostLabel  = quickMonths ? `${quickMonths} Ay Önceki Değer` : (isFiltered ? 'Dönem' : 'Toplam') + ' Maliyet';
+    const psValLabel   = quickMonths ? 'Güncel Değer' : (isFiltered ? 'Dönem' : 'Güncel') + ' Değer';
+    const psPlLabel    = quickMonths ? `${quickMonths} Aylık Kâr / Zarar` : ((isFiltered ? 'Dönem ' : '') + 'Kâr / Zarar');
+    const psCostVal    = quickMonths ? '…' : fmtTL(filtStats.cost);
+    const psValVal     = quickMonths ? '…' : fmtTL(filtStats.val);
+    const psPlVal      = quickMonths ? '…' : (filtStats.pl >= 0 ? '+' : '') + fmtTL(filtStats.pl);
+    const psPlPctVal   = quickMonths ? '…' : (filtStats.plPct >= 0 ? '+' : '') + filtStats.plPct.toFixed(2) + '%';
+    const psPlClass    = quickMonths ? '' : (filtStats.pl >= 0 ? 'up' : 'down');
+    const psPlPctClass = quickMonths ? '' : (filtStats.plPct >= 0 ? 'up' : 'down');
+
     const card = document.createElement("div");
     card.className = "cat-card";
     card.dataset.catKey = cfg.key;
+
+    const quickButtonsHtml = cfg.historySupported ? `
+        <div class="cat-filter-row" style="border-bottom:none;margin-bottom:.5rem;padding-bottom:0">
+          <span class="cat-filter-label">Hızlı dönem</span>
+          <div class="period-tabs" style="margin-bottom:0">
+            ${[1,3,6,12].map(m => `<button class="period-tab cat-quick-btn ${quickMonths===m?'active':''}" data-cat="${cfg.key}" data-months="${m}">${m} Ay</button>`).join("")}
+          </div>
+        </div>` : "";
 
     card.innerHTML = `
       <div class="cat-card-head">
@@ -2012,19 +2037,10 @@ function renderCategoryCards() {
         </div>
       </div>
       <div class="cat-card-body ${isOpen ? 'open' : ''}">
-        <!-- Hızlı dönem seçimi -->
-        <div class="cat-filter-row" style="border-bottom:none;margin-bottom:.5rem;padding-bottom:0">
-          <span class="cat-filter-label">Hızlı dönem</span>
-          <div class="period-tabs" style="margin-bottom:0">
-            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="1">1 Ay</button>
-            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="3">3 Ay</button>
-            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="6">6 Ay</button>
-            <button class="period-tab cat-quick-btn" data-cat="${cfg.key}" data-months="12">12 Ay</button>
-          </div>
-        </div>
-        <!-- Tarih filtresi -->
+        ${quickButtonsHtml}
+        <!-- Tarih filtresi (yalnızca hangi tarihte alınan varlıkları göstereceğini filtreler) -->
         <div class="cat-filter-row">
-          <span class="cat-filter-label">Tarih aralığı</span>
+          <span class="cat-filter-label">Alım tarihi aralığı</span>
           <input type="date" class="cat-date-in" id="catFrom_${cfg.key}"
             value="${filter.from || earliest}"
             min="${earliest}" max="${today}" />
@@ -2038,34 +2054,34 @@ function renderCategoryCards() {
         <!-- Dönem istatistikleri -->
         <div class="cat-period-stats">
           <div class="cat-ps-cell">
-            <div class="cpc-label">${isFiltered ? 'Dönem' : 'Toplam'} Maliyet</div>
-            <div class="cpc-val">${fmtTL(filtStats.cost)}</div>
+            <div class="cpc-label">${psCostLabel}</div>
+            <div class="cpc-val">${psCostVal}</div>
           </div>
           <div class="cat-ps-cell">
-            <div class="cpc-label">${isFiltered ? 'Dönem' : 'Güncel'} Değer</div>
-            <div class="cpc-val">${fmtTL(filtStats.val)}</div>
+            <div class="cpc-label">${psValLabel}</div>
+            <div class="cpc-val">${psValVal}</div>
           </div>
           <div class="cat-ps-cell">
-            <div class="cpc-label">${isFiltered ? 'Dönem ' : ''}Kâr / Zarar</div>
-            <div class="cpc-val ${filtStats.pl >= 0 ? 'up' : 'down'}">
-              ${filtStats.pl >= 0 ? '+' : ''}${fmtTL(filtStats.pl)}
-            </div>
+            <div class="cpc-label">${psPlLabel}</div>
+            <div class="cpc-val ${psPlClass}">${psPlVal}</div>
           </div>
           <div class="cat-ps-cell">
             <div class="cpc-label">Getiri %</div>
-            <div class="cpc-val ${filtStats.plPct >= 0 ? 'up' : 'down'}">
-              ${filtStats.plPct >= 0 ? '+' : ''}${filtStats.plPct.toFixed(2)}%
-            </div>
+            <div class="cpc-val ${psPlPctClass}">${psPlPctVal}</div>
           </div>
         </div>
 
-        <!-- Bar grafik -->
-        ${filtHoldings.length > 0 ? `
-        <div class="cat-chart-header">Varlık Bazlı K/Z (TL)</div>
-        <div class="cat-chart-wrap" style="height:${Math.max(100, filtHoldings.length * 42 + 30)}px">
-          <canvas id="catChart_${cfg.key}"></canvas>
+        <!-- Bar grafik alanı -->
+        <div class="cat-chart-area">
+        ${quickMonths ? `
+          <div style="color:var(--text-mute);font-size:.85rem;padding:.5rem 0">Hesaplanıyor…</div>
+        ` : (filtHoldings.length > 0 ? `
+          <div class="cat-chart-header">Varlık Bazlı K/Z (TL)</div>
+          <div class="cat-chart-wrap" style="height:${Math.max(100, filtHoldings.length * 42 + 30)}px">
+            <canvas id="catChart_${cfg.key}"></canvas>
+          </div>
+        ` : '<div style="color:var(--text-mute);font-size:.85rem;padding:.5rem 0">Bu tarih aralığında varlık yok.</div>')}
         </div>
-        ` : '<div style="color:var(--text-mute);font-size:.85rem;padding:.5rem 0">Bu tarih aralığında varlık yok.</div>'}
       </div>
     `;
 
@@ -2073,23 +2089,28 @@ function renderCategoryCards() {
 
     // Toggle butonu
     card.querySelector(".cat-card-head").addEventListener("click", (e) => {
-      if (e.target.closest(".cat-date-in") || e.target.closest(".cat-reset-btn")) return;
+      if (e.target.closest(".cat-date-in") || e.target.closest(".cat-reset-btn") || e.target.closest(".cat-quick-btn")) return;
       const body = card.querySelector(".cat-card-body");
       const btn  = card.querySelector(".cat-toggle-btn");
       const opening = !body.classList.contains("open");
       body.classList.toggle("open", opening);
       btn.classList.toggle("open", opening);
-      if (opening) drawCatChart(cfg.key);
+      if (opening) {
+        const qm = state.catQuickPeriod[cfg.key];
+        if (qm) applyCatQuickPeriod(cfg.key, qm); else drawCatChart(cfg.key);
+      }
     });
 
-    // Tarih inputları
+    // Tarih inputları — manuel tarih seçilirse hızlı dönem modundan çıkılır
     card.querySelector(`#catFrom_${cfg.key}`)?.addEventListener("change", e => {
+      state.catQuickPeriod[cfg.key] = null;
       state.catFilters[cfg.key].from = e.target.value;
       renderCategoryCards();
       const openCard = container.querySelector(`[data-cat-key="${cfg.key}"] .cat-card-body`);
       if (openCard?.classList.contains("open")) drawCatChart(cfg.key);
     });
     card.querySelector(`#catTo_${cfg.key}`)?.addEventListener("change", e => {
+      state.catQuickPeriod[cfg.key] = null;
       state.catFilters[cfg.key].to = e.target.value;
       renderCategoryCards();
       const openCard = container.querySelector(`[data-cat-key="${cfg.key}"] .cat-card-body`);
@@ -2100,54 +2121,140 @@ function renderCategoryCards() {
     card.querySelector(`[data-reset="${cfg.key}"]`)?.addEventListener("click", e => {
       e.stopPropagation();
       state.catFilters[cfg.key] = { from: "", to: "" };
+      state.catQuickPeriod[cfg.key] = null;
       renderCategoryCards();
     });
 
-    // Hızlı dönem butonları (1/3/6/12 Ay)
+    // Hızlı dönem butonları (1/3/6/12 Ay) — fiyat geçmişine göre gerçek dönem getirisini hesaplar
     card.querySelectorAll(".cat-quick-btn").forEach(btn => {
       btn.addEventListener("click", e => {
         e.stopPropagation();
-        const months = parseInt(btn.dataset.months);
-        const to = new Date();
-        const from = new Date();
-        from.setMonth(from.getMonth() - months);
-        const toStr = to.toISOString().slice(0,10);
-        const fromStr = from.toISOString().slice(0,10);
-        state.catFilters[cfg.key] = { from: fromStr, to: toStr };
+        const months  = parseInt(btn.dataset.months);
+        const already = state.catQuickPeriod[cfg.key] === months;
+        state.catQuickPeriod[cfg.key] = already ? null : months;
+        state.catFilters[cfg.key] = { from: "", to: "" };
+        card.querySelector(".cat-card-body")?.classList.add("open");
+        card.querySelector(".cat-toggle-btn")?.classList.add("open");
         renderCategoryCards();
-        const openCard = container.querySelector(`[data-cat-key="${cfg.key}"] .cat-card-body`);
-        if (openCard) { openCard.classList.add("open"); openCard.previousElementSibling?.querySelector(".cat-toggle-btn")?.classList.add("open"); }
-        drawCatChart(cfg.key);
       });
     });
 
-    // Açıksa grafiği çiz
-    if (isOpen && filtHoldings.length > 0) {
-      setTimeout(() => drawCatChart(cfg.key), 50);
+    // Açıksa grafiği/dönemi hesapla-çiz
+    if (isOpen) {
+      if (quickMonths) setTimeout(() => applyCatQuickPeriod(cfg.key, quickMonths), 30);
+      else if (filtHoldings.length > 0) setTimeout(() => drawCatChart(cfg.key), 50);
     }
   });
 }
 
-function drawCatChart(catKey) {
-  const canvasId = "catChart_" + catKey;
-  const canvas   = document.getElementById(canvasId);
-  if (!canvas) return;
+// Hızlı dönem (1/3/6/12 ay) için bir varlığın fiyat geçmişini getirir (fon/altın/döviz)
+async function getPeriodHistoryForHolding(h){
+  if (h.type === "fund"){
+    let entry = state.prices.fund[h.code];
+    if (!entry || !entry.history || entry.history.length < 2){
+      entry = await fetchTefasFund(h.code, 365);
+      if (entry) state.prices.fund[h.code] = entry;
+    }
+    return entry ? entry.history : null;
+  }
+  if (h.type === "fx"){
+    if (!state.history.fx[h.code] || !state.history.fx[h.code].length){
+      const sym = YAHOO_SYMBOLS[h.code];
+      state.history.fx[h.code] = await fetchYahooHistory(sym, "fx", 1);
+    }
+    return state.history.fx[h.code];
+  }
+  if (h.type === "gold"){
+    if (!state.history.gold[h.code] || !state.history.gold[h.code].length){
+      state.history.gold[h.code] = await fetchGoldHistoryInTL(h.code, 1);
+    }
+    return state.history.gold[h.code];
+  }
+  return null;
+}
 
-  // Mevcut chart'ı temizle
-  if (state.catCharts[catKey]) {
-    state.catCharts[catKey].destroy();
-    delete state.catCharts[catKey];
+// Geçmiş fiyat dizisinde hedef tarihe eşit ya da öncesindeki en yakın fiyatı bulur
+function priceAtOrBefore(history, targetDate){
+  if (!Array.isArray(history) || !history.length) return null;
+  const sorted = [...history].sort((a,b) => a.date - b.date);
+  let best = null;
+  for (const p of sorted){
+    if (p.date.getTime() <= targetDate.getTime()) best = p; else break;
+  }
+  return best ? best.price : sorted[0].price;
+}
+
+// Bir kategori için N aylık GERÇEK dönem getirisini (fiyat geçmişine göre) hesaplar
+// — mevcut tüm varlıkları kapsar, alım tarihine göre dışlama yapmaz.
+async function computeCategoryPeriodStats(catKey, months){
+  const holdings = state.holdings.filter(h => h.type === catKey);
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+
+  const items = [];
+  for (const h of holdings){
+    const cur = getCurrentPrice(h);
+    if (!isFinite(cur)) continue;
+    let basePrice = null;
+    try {
+      const hist = await getPeriodHistoryForHolding(h);
+      basePrice = priceAtOrBefore(hist, cutoff);
+    } catch(e) { /* geçmiş veri alınamadı — aşağıda maliyet fiyatına düşülecek */ }
+    if (!isFinite(basePrice)) basePrice = getTLBuyPrice(h);
+    const pl = (cur - basePrice) * h.amount;
+    items.push({ label: h.label || h.code, pl, baseVal: basePrice * h.amount, curVal: cur * h.amount });
   }
 
+  items.sort((a,b) => b.pl - a.pl);
+  const cost  = items.reduce((s,i) => s + i.baseVal, 0);
+  const val   = items.reduce((s,i) => s + i.curVal, 0);
+  const pl    = val - cost;
+  const plPct = cost > 0 ? (pl/cost) * 100 : 0;
+  return { items, cost, val, pl, plPct };
+}
+
+// Hızlı dönem seçilince kartın istatistik ve grafik alanını asenkron olarak günceller
+async function applyCatQuickPeriod(catKey, months){
+  const card = document.querySelector(`.cat-card[data-cat-key="${catKey}"]`);
+  if (!card) return;
+
+  const result = await computeCategoryPeriodStats(catKey, months);
+
+  // Kullanıcı bu sırada başka bir döneme/görünüme geçtiyse eski sonucu uygulama
+  if (state.catQuickPeriod[catKey] !== months) return;
+
+  const cells = card.querySelectorAll(".cat-period-stats .cpc-val");
+  if (cells.length === 4){
+    cells[0].textContent = fmtTL(result.cost);
+    cells[1].textContent = fmtTL(result.val);
+    cells[2].textContent = (result.pl >= 0 ? "+" : "") + fmtTL(result.pl);
+    cells[2].className   = "cpc-val " + (result.pl >= 0 ? "up" : "down");
+    cells[3].textContent = (result.plPct >= 0 ? "+" : "") + result.plPct.toFixed(2) + "%";
+    cells[3].className   = "cpc-val " + (result.plPct >= 0 ? "up" : "down");
+  }
+
+  const chartArea = card.querySelector(".cat-chart-area");
+  if (!chartArea) return;
+  if (!result.items.length){
+    chartArea.innerHTML = '<div style="color:var(--text-mute);font-size:.85rem;padding:.5rem 0">Bu dönem için veri bulunamadı.</div>';
+    return;
+  }
+  chartArea.innerHTML = `
+    <div class="cat-chart-header">Varlık Bazlı K/Z (TL) — Son ${months} Ay</div>
+    <div class="cat-chart-wrap" style="height:${Math.max(100, result.items.length * 42 + 30)}px">
+      <canvas id="catChart_${catKey}"></canvas>
+    </div>`;
+  renderBarChart(catKey, result.items);
+}
+
+function drawCatChart(catKey) {
   const filter   = state.catFilters[catKey] || { from: "", to: "" };
   const holdings = filterHoldingsByDate(
     state.holdings.filter(h => h.type === catKey),
     filter.from, filter.to
   );
-
   if (!holdings.length) return;
 
-  // Her varlığın P/L'sini hesapla
   const items = holdings.map(h => {
     const cur  = getCurrentPrice(h);
     const cost = getTLBuyPrice(h) * h.amount;
@@ -2155,6 +2262,20 @@ function drawCatChart(catKey) {
     const pl   = val - cost;
     return { label: h.label || h.code, pl };
   }).sort((a, b) => b.pl - a.pl);
+
+  renderBarChart(catKey, items);
+}
+
+// Ortak yatay bar grafik çizici — hem tarih filtreli hem hızlı dönem görünümü tarafından kullanılır
+function renderBarChart(catKey, items){
+  const canvasId = "catChart_" + catKey;
+  const canvas   = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  if (state.catCharts[catKey]) {
+    state.catCharts[catKey].destroy();
+    delete state.catCharts[catKey];
+  }
 
   const labels = items.map(i => i.label);
   const data   = items.map(i => i.pl);
