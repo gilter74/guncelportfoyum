@@ -1628,31 +1628,60 @@ async function fetchGoldHistoryInTL(goldKey, years = 1) {
 
 // ── Google Sheets — Fon Fiyatları Birincil Kaynak ────────────
 // CORS proxy zinciri üzerinden bağlanır (Apps Script redirect'i aşmak için)
+// JSONP ile veri çekme — <script> etiketi CORS'a takılmadığı için
+// script.google.com'un yönlendirme (302) sonrası CORS engeline hiç girmez.
+function fetchJsonp(url, timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    const cbName = "jsonp_cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    let done = false;
+
+    const cleanup = () => {
+      delete window[cbName];
+      script.remove();
+      clearTimeout(timer);
+    };
+
+    window[cbName] = (data) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(data);
+    };
+
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("JSONP zaman aşımı"));
+    }, timeoutMs);
+
+    script.onerror = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("JSONP script yüklenemedi"));
+    };
+
+    const sep = url.includes("?") ? "&" : "?";
+    script.src = url + sep + "callback=" + cbName;
+    document.head.appendChild(script);
+  });
+}
+
 async function fetchGoogleSheets() {
   let data = null;
 
-  // Önce direkt, olmadı sırayla proxy'ler
-  const denemeler = [
-    SHEETS_URL,
-    ...CORS_PROXIES.map(p => p(SHEETS_URL))
-  ];
-
-  for (const url of denemeler) {
-    try {
-      console.log("Sheets: deneniyor →", url);
-      const r = await fetchWithTimeout(url, {}, 12000);
-      console.log("Sheets: yanıt durumu →", r.status, r.ok);
-      if (!r.ok) continue;
-      const json = await r.json();
-      if (json.error) { console.warn("Sheets: yanıt içinde hata alanı var", json.error); continue; }
-      data = json;
-      console.log("Sheets: BAŞARILI, veri alındı →", url);
-      break;
-    } catch(e) { console.error("Sheets: istek hata verdi →", url, e); continue; }
+  try {
+    console.log("Sheets: JSONP ile deneniyor →", SHEETS_URL);
+    data = await fetchJsonp(SHEETS_URL, 10000);
+    console.log("Sheets: BAŞARILI (JSONP), veri alındı", data);
+  } catch (e) {
+    console.error("Sheets: JSONP hata verdi →", e);
   }
 
   if (!data) {
-    console.warn("Sheets: tüm bağlantı denemeleri başarısız");
+    console.warn("Sheets: bağlantı başarısız");
     return false;
   }
 
