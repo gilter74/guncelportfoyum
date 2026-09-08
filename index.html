@@ -173,7 +173,7 @@
   .user-chip .email{display:none}
   @media(min-width:900px){ .user-chip .email{display:inline;color:var(--text)} }
 
-  .container{max-width:1280px;margin:0 auto;padding:1.8rem 1.5rem 5rem}
+  .container{max-width:1600px;margin:0 auto;padding:1.8rem 1.5rem 5rem}
 
   /* özet kartlar */
   .summary{
@@ -338,18 +338,15 @@
   .group-pl-badge.up   { color: var(--profit); background: rgba(127,182,133,.12); }
   .group-pl-badge.down { color: var(--loss);   background: rgba(217,119,117,.12); }
 
-  /* iki sütun: tablo + dağılım */
+  /* Varlıklar paneli artık tek sütun, tam genişlik */
   .grid-main{
     display:grid;gap:1.5rem;
     grid-template-columns:1fr;
     align-items:start;
   }
-  @media(min-width:880px){
-    .grid-main{grid-template-columns:1fr 360px}
-  }
   /* Varlıklar tablosu kendi içinde kaysın, sayfa boyu sabit kalsın (mobil dahil) */
   .grid-main .panel:first-child .table-wrap{
-    max-height:calc(100vh - 340px);
+    max-height:calc(100vh - 300px);
     overflow-y:auto;
   }
   .grid-main .panel:first-child .table-wrap thead th{
@@ -360,6 +357,27 @@
     .grid-main .panel:first-child .table-wrap{
       max-height:calc(100vh - 260px);
     }
+  }
+
+  /* dağılım — varlıkların altında yatay şerit */
+  .alloc-horizontal{padding:1.1rem 1.3rem}
+  .alloc-body-h{
+    display:flex; flex-direction:column; gap:1rem;
+  }
+  .alloc-body-h .alloc-chart-box{ position:relative; height:170px; width:170px; flex-shrink:0; margin:0 auto; }
+  .alloc-body-h .alloc-list{
+    display:flex; gap:.6rem; overflow-x:auto; padding-bottom:.3rem;
+    scrollbar-width:thin; flex:1;
+  }
+  .alloc-body-h .alloc-row{
+    display:flex;align-items:center;gap:.5rem;
+    font-size:.82rem; flex:0 0 auto; white-space:nowrap;
+    background:var(--bg-2); border:1px solid var(--border-soft);
+    border-radius:999px; padding:.35rem .7rem;
+  }
+  @media(min-width:720px){
+    .alloc-body-h{ flex-direction:row; align-items:center; }
+    .alloc-body-h .alloc-chart-box{ margin:0; }
   }
 
   /* tablo paneli */
@@ -828,18 +846,31 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- dağılım -->
-      <div class="panel alloc">
-        <div class="panel-head" style="padding:0 0 1rem 0;border-bottom:1px solid var(--border-soft);margin-bottom:1rem">
-          <h2 class="serif" style="font-size:1.1rem">Dağılım</h2>
+    <!-- dağılım — varlıkların altında, yatay şerit -->
+    <div class="panel alloc-horizontal" style="margin-top:1.5rem">
+      <div class="panel-head" style="padding-bottom:1rem;border-bottom:1px solid var(--border-soft);margin-bottom:1rem">
+        <h2 class="serif" style="font-size:1.1rem">Dağılım</h2>
+      </div>
+      <div class="alloc-body-h">
+        <div class="alloc-chart-box">
+          <canvas id="allocChart"></canvas>
         </div>
-        <div class="alloc-body">
-          <div class="alloc-chart-box">
-            <canvas id="allocChart"></canvas>
-          </div>
-          <div class="alloc-list" id="allocList"></div>
-        </div>
+        <div class="alloc-list" id="allocList"></div>
+      </div>
+    </div>
+
+    <!-- İZLEME LİSTESİ — portföye eklemeden takip edilen fonlar -->
+    <div class="panel" style="margin-top:1.5rem">
+      <div class="panel-head">
+        <h2 class="serif">İzleme <em>listesi</em></h2>
+        <button class="btn btn-primary btn-sm" id="btnWatchAdd">+ Fon ekle</button>
+      </div>
+      <div style="padding:1.3rem">
+        <div class="helper" style="margin-bottom:.9rem">Portföyüne eklemeden, sadece fiyatını ve grafiğini takip etmek istediğin fonlar.</div>
+        <div id="watchlistGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem"></div>
+        <div id="watchlistEmpty" class="helper" style="display:none;padding:.5rem 0">Henüz izlemeye aldığın bir fon yok.</div>
       </div>
     </div>
 
@@ -883,6 +914,27 @@
     </div>
   </main>
 </section>
+
+<!-- =========== İZLEME LİSTESİ — FON EKLE MODAL =========== -->
+<div class="modal-bg" id="modalWatchAdd">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <h2 class="serif">İzlemeye Al</h2>
+      <button class="modal-close" id="watchAddClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Fon Kodu</label>
+        <input id="watchCode" type="text" placeholder="örn: TGE, A1B" maxlength="7" style="text-transform:uppercase" />
+        <div class="helper">Harf ve rakam içerebilir.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="watchAddCancel">Vazgeç</button>
+      <button class="btn btn-primary" id="watchAddSave">Ekle</button>
+    </div>
+  </div>
+</div>
 
 <!-- =========== VARLIK EKLE MODAL =========== -->
 <div class="modal-bg" id="modalAdd">
@@ -1111,9 +1163,11 @@
 
         <div id="priceView">
           <div class="period-tabs" id="periodTabs">
+            <button class="period-tab" data-days="7">Haftalık</button>
             <button class="period-tab" data-days="30">1 Ay</button>
             <button class="period-tab active" data-days="90">3 Ay</button>
             <button class="period-tab" data-days="180">6 Ay</button>
+            <button class="period-tab" data-days="270">9 Ay</button>
             <button class="period-tab" data-days="365">12 Ay</button>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:.6rem;flex-wrap:wrap">
@@ -1400,7 +1454,7 @@ const state = {
   prices: { gold: {}, fx: {}, fund: {} },
   history: { fund: {}, fx: {}, gold: {} }, // Geçmiş verileri tutacak yeni obje
   longHistory: { fund: {}, fx: {}, gold: {} }, // Yıllık getiri grafiği için çok yıllı geçmiş önbelleği
-  selectedType: "gold", unsubHoldings: null, allocChart: null,
+  selectedType: "gold", unsubHoldings: null, unsubWatchlist: null, watchlist: [], allocChart: null,
   detailChart: null, yearlyChart: null, currentDetailHolding: null, currentDetailDays: 90, currentDetailView: "price", refreshInterval: null,
   catFilters: { fund: { from: "", to: "" }, gold: { from: "", to: "" }, fx: { from: "", to: "" }, eurobond: { from: "", to: "" }, deposit: { from: "", to: "" } },
   catQuickPeriod: { fund: null, gold: null, fx: null, eurobond: null, deposit: null },
@@ -1732,7 +1786,10 @@ async function refreshAllPrices(){
     const ok1 = await fetchTruncgil();
 
     // 3. Fintables — SADECE Sheets'ten gelemeyen fonlar için yedek
-    const fundCodes = [...new Set(state.holdings.filter(h=>h.type==="fund").map(h=>h.code))];
+    const fundCodes = [...new Set([
+      ...state.holdings.filter(h=>h.type==="fund").map(h=>h.code),
+      ...state.watchlist.map(w=>w.code)
+    ])];
     let fundOk = 0, fundFail = 0;
 
     for (const code of fundCodes){
@@ -2424,13 +2481,44 @@ function renderLivePrices(){
 }
 
 function renderAll(){
-  renderSummary(); renderTable(); renderAllocation(); renderLivePrices();
+  renderSummary(); renderTable(); renderAllocation(); renderLivePrices(); renderWatchlist();
   if (typeof doConvert === "function") doConvert("fwd");
   // Açık kategori grafiklerini yeniden çiz
   document.querySelectorAll(".cat-card-body.open").forEach(body => {
     const key = body.closest(".cat-card")?.dataset.catKey;
     if (key) setTimeout(() => drawCatChart(key), 80);
   });
+}
+
+function renderWatchlist(){
+  const grid = $("watchlistGrid"), empty = $("watchlistEmpty");
+  if (!grid) return;
+  if (!state.watchlist.length){
+    grid.innerHTML = ""; empty.style.display = "block"; return;
+  }
+  empty.style.display = "none";
+  grid.innerHTML = state.watchlist.map(w => {
+    const entry = state.prices.fund[w.code];
+    const price = entry?.price;
+    return `
+      <div class="price-cell" style="display:flex;flex-direction:column;gap:.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+          <div>
+            <div class="k">${escapeHtml(w.code)}</div>
+            <div class="v" style="margin-top:.2rem">${isFinite(price) ? fmtTL(price) : "—"}</div>
+          </div>
+          <button class="btn btn-danger btn-sm" data-watch-del="${w.id}" title="İzlemeden çıkar" style="padding:.25rem .5rem">×</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-watch-chart="${w.id}" style="width:100%">📊 Büyük Grafik</button>
+      </div>
+    `;
+  }).join("");
+
+  grid.querySelectorAll("[data-watch-del]").forEach(b => b.addEventListener("click", () => deleteWatchlistItem(b.dataset.watchDel)));
+  grid.querySelectorAll("[data-watch-chart]").forEach(b => b.addEventListener("click", () => {
+    const w = state.watchlist.find(x => x.id === b.dataset.watchChart);
+    if (w) openDetail({ type: "fund", code: w.code, label: w.code, amount: 1, buyPrice: NaN });
+  }));
 }
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -2448,6 +2536,23 @@ function subscribeHoldings(kod){
     if (missing.length){ Promise.all(missing.map(h=>fetchTefasFund(h.code, 365).then(r=>{ if (r) state.prices.fund[h.code] = r; }))).then(()=> renderAll()); } 
     else { renderAll(); }
   });
+}
+function subscribeWatchlist(kod){
+  if (state.unsubWatchlist) state.unsubWatchlist();
+  const q = query(ref(db, "users/" + kod + "/watchlist"), orderByChild("createdAt"));
+  state.unsubWatchlist = onValue(q, snap=>{
+    const arr = []; snap.forEach(c => { arr.push({ id: c.key, ...c.val() }); }); arr.reverse();
+    state.watchlist = arr;
+    renderAll();
+  });
+}
+async function addWatchlistItem(code){
+  await push(ref(db, "users/" + state.userKod + "/watchlist"), { code, createdAt: serverTimestamp() });
+  toast("İzlemeye alındı", "success");
+}
+async function deleteWatchlistItem(id){
+  await remove(child(ref(db, "users/" + state.userKod + "/watchlist"), id));
+  toast("İzlemeden çıkarıldı");
 }
 async function addHolding(payload){ await push(ref(db, "users/" + state.userKod + "/holdings"), { ...payload, createdAt: serverTimestamp() }); toast("Eklendi", "success"); }
 async function updateHolding(id, partial){ await update(child(ref(db, "users/" + state.userKod + "/holdings"), id), partial); }
@@ -2588,6 +2693,21 @@ $("editAssetSave").addEventListener("click", async () => {
 });
 
 $("btnRefresh").addEventListener("click", refreshAllPrices);
+
+// İzleme listesi — fon ekleme modalı
+const watchAddModal = $("modalWatchAdd");
+$("btnWatchAdd").addEventListener("click", () => { $("watchCode").value = ""; watchAddModal.classList.add("show"); });
+const closeWatchAdd = () => watchAddModal.classList.remove("show");
+$("watchAddClose").addEventListener("click", closeWatchAdd);
+$("watchAddCancel").addEventListener("click", closeWatchAdd);
+$("watchAddSave").addEventListener("click", async () => {
+  const code = $("watchCode").value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,7}$/.test(code)) { toast("Geçerli bir fon kodu girin (örn: TGE, A1B)", "error"); return; }
+  if (state.watchlist.some(w => w.code === code)) { toast("Bu fon zaten izleme listende", "error"); return; }
+  await addWatchlistItem(code);
+  closeWatchAdd();
+  refreshAllPrices();
+});
 
 const CONV_OPTIONS = [
   { value:"TL", label:"Türk Lirası (TL)", getRate: () => 1 },
@@ -2739,8 +2859,9 @@ async function renderYearlyReturns(h){
   });
 }
 
-async function openDetail(holdingId){
-  const h = state.holdings.find(x => x.id === holdingId); if (!h) return;
+async function openDetail(holdingIdOrObj){
+  const h = typeof holdingIdOrObj === "string" ? state.holdings.find(x => x.id === holdingIdOrObj) : holdingIdOrObj;
+  if (!h) return;
   const cur = getCurrentPrice(h), cost = getTLBuyPrice(h) * h.amount, value = cur * h.amount;
   $("detailTitle").textContent = (h.label || h.code) + " — Detay";
   $("dCost").textContent = fmtTL(cost); $("dValue").textContent = isFinite(value)?fmtTL(value):"—";
@@ -3264,7 +3385,7 @@ function checkAlarms(){
 function onUserReady(){
   $("userEmail").textContent = state.userKod;
   $("auth").style.display = "none"; $("app").classList.add("show");
-  subscribeHoldings(state.userKod); refreshAllPrices();
+  subscribeHoldings(state.userKod); subscribeWatchlist(state.userKod); refreshAllPrices();
   renderAlarmBanner(); updateAlarmBadge();
   setInterval(() => { if (!document.hidden) refreshAllPrices(); }, 60000);
 }
