@@ -1639,13 +1639,16 @@ async function fetchGoogleSheets() {
 
   for (const url of denemeler) {
     try {
+      console.log("Sheets: deneniyor →", url);
       const r = await fetchWithTimeout(url, {}, 12000);
+      console.log("Sheets: yanıt durumu →", r.status, r.ok);
       if (!r.ok) continue;
       const json = await r.json();
-      if (json.error) continue;
+      if (json.error) { console.warn("Sheets: yanıt içinde hata alanı var", json.error); continue; }
       data = json;
+      console.log("Sheets: BAŞARILI, veri alındı →", url);
       break;
-    } catch(e) { continue; }
+    } catch(e) { console.error("Sheets: istek hata verdi →", url, e); continue; }
   }
 
   if (!data) {
